@@ -1,6 +1,6 @@
-// ============================
-//  GEMINI SERVICE – FINAL 2025 (COMPLETO)
-// ============================
+// =======================================================
+// GEMINI SERVICE — VERSÃO FINAL 2025 (COMPATÍVEL COM VERCEL)
+// =======================================================
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
@@ -12,12 +12,14 @@ import {
   PlanType
 } from "../types";
 
-// INIT GEMINI
+// -----------------------------------------------
+// 🔐 Inicialização do Gemini
+// -----------------------------------------------
 const ai = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY || "");
 
-// =========================================================
-// 1. GERAR PERGUNTAS DE BRIEFING
-// =========================================================
+// -----------------------------------------------
+// 1. BRIEFING QUESTIONS
+// -----------------------------------------------
 export const generateBriefingQuestions = async (
   niche: string
 ): Promise<BriefingQuestion[]> => {
@@ -26,98 +28,78 @@ export const generateBriefingQuestions = async (
 
     const result = await model.generateContent({
       contents: `
-        Gere 5 perguntas de briefing para o nicho "${niche}".
-        Retorne apenas um JSON:
-        [{ "id": "1", "question": "...", "placeholder": "..." }]
+        Gere 5 perguntas para entender um cliente do nicho ${niche}.
+        Retorne apenas JSON no formato:
+        [{ "id": "1", "question": "", "placeholder": "" }]
       `
     });
 
     return JSON.parse(result.response.text());
-  } catch {
+  } catch (e) {
     return [
-      {
-        id: "1",
-        question: `Quais serviços você oferece em ${niche}?`,
-        placeholder: "..."
-      },
-      {
-        id: "2",
-        question: "Qual seu diferencial?",
-        placeholder: "..."
-      },
-      {
-        id: "3",
-        question: "Quem é seu público ideal?",
-        placeholder: "..."
-      }
+      { id: "1", question: `Quais serviços você oferece em ${niche}?`, placeholder: "..." },
+      { id: "2", question: `Qual seu diferencial em ${niche}?`, placeholder: "..." },
     ];
   }
 };
 
-// =========================================================
-// 2. GERAR LANDING PAGE COMPLETA
-// =========================================================
+// -----------------------------------------------
+// 2. LANDING PAGE GENERATOR
+// -----------------------------------------------
 export const generateLandingPage = async (
   niche: string,
   plan: PlanType,
   style: LandingStyle
 ): Promise<string> => {
+
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `
-    Gere uma landing page HTML completa para o nicho "${niche}".
-    - Tailwind via CDN
-    - Imagens Pollinations
-    - Português BR
-    - Estilo: ${style}
-    - Plano: ${plan}
-    Entregue APENAS HTML.
+    Gere uma landing page completa em HTML,
+    Tailwind CDN, português do Brasil,
+    nicho: "${niche}", plano: "${plan}", estilo: "${style}".
+
+    Entregue APENAS HTML puro, sem Markdown.
   `;
 
-  try {
-    const response = await model.generateContent(prompt);
-    let html = response.response.text();
-    return html.replace(/```html/g, "").replace(/```/g, "");
-  } catch {
-    return "<h1>Erro ao gerar landing page</h1>";
-  }
+  const result = await model.generateContent(prompt);
+  return result.response.text().replace(/```html/g, "").replace(/```/g, "");
 };
 
-// =========================================================
-// 3. GERAR PÁGINA SaaS
-// =========================================================
+// -----------------------------------------------
+// 3. SAAS PAGE GENERATOR
+// -----------------------------------------------
 export const generateSaaSPage = async (
   niche: string,
   answers: Record<string, string>
 ): Promise<string> => {
+
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `
-    Gere uma página HTML SaaS premium para o nicho "${niche}".
+    Gere uma página SaaS premium em HTML para o nicho "${niche}".
     Contexto: ${JSON.stringify(answers)}
-    - Tailwind CDN
-    - Glassmorphism
-    - Português BR
-    - Apenas HTML
+    Sem Markdown. Apenas HTML.
   `;
 
-  const res = await model.generateContent(prompt);
-  return res.response.text().replace(/```html/g, "").replace(/```/g, "");
+  const result = await model.generateContent(prompt);
+  return result.response.text().replace(/```/g, "");
 };
 
-// =========================================================
-// 4. ANALISAR VENDAS
-// =========================================================
+// -----------------------------------------------
+// 4. SALES ANALYSIS
+// -----------------------------------------------
 export const analyzeSalesContext = async (
   text: string
 ): Promise<SalesAnalysis | null> => {
+
   try {
     const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const result = await model.generateContent({
       contents: `
-        Analise o texto: "${text}"
-        Retorne um JSON:
+        Analise o texto: "${text}".
+        Devolva um JSON:
         {
           "shortResponse": "",
           "mediumResponse": "",
@@ -135,45 +117,68 @@ export const analyzeSalesContext = async (
   }
 };
 
-// =========================================================
-// 5. GERAR COPY DE VENDAS / PROPOSTA / OBJEÇÃO / SCRIPT
-// =========================================================
+// -----------------------------------------------
+// 5. SALES CONTENT GENERATOR (OBJEÇÃO / COPY / PROPOSTA / SCRIPT)
+// -----------------------------------------------
 export const generateSalesContent = async (
   type: "objection" | "copy" | "proposal" | "script",
   context: string
 ): Promise<string> => {
+
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   let prompt = "";
 
   if (type === "objection") {
-    prompt = `Cliente disse: "${context}". Gere 3 respostas: agressiva, empática e lógica.`;
-  } else if (type === "copy") {
-    prompt = `Crie uma legenda AIDA para vender landing pages para o nicho "${context}"`;
-  } else if (type === "proposal") {
+    prompt = `O cliente disse "${context}". Crie 3 respostas: lógica, empática e agressiva.`;
+  }
+  if (type === "copy") {
+    prompt = `Crie uma legenda AIDA para o nicho "${context}" em português.`;
+  }
+  if (type === "proposal") {
     prompt = `
       Gere proposta comercial para o nicho "${context}".
-      Ofereça Planos R$397 e R$697.
+      Ofereça planos R$397 e R$697.
     `;
-  } else if (type === "script") {
-    prompt = `Crie mensagem fria para captar clientes no nicho "${context}".`;
+  }
+  if (type === "script") {
+    prompt = `Crie mensagem fria (DM) para captar clientes do nicho "${context}".`;
   }
 
-  const res = await model.generateContent(prompt);
-  return res.response.text();
+  const result = await model.generateContent(prompt);
+  return result.response.text();
 };
 
-// =========================================================
-// 6. EDITAR IMAGEM COM GEMINI
-// =========================================================
+// -----------------------------------------------
+// 6. MARKETING COPY GENERATOR ✔ (QUE FALTAVA!)
+// -----------------------------------------------
+export const generateMarketingCopy = async (
+  text: string
+): Promise<string> => {
+
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const result = await model.generateContent(`
+    Gere uma copy curta, persuasiva e com emojis.
+    Tema: ${text}
+    Sem hashtags.
+  `);
+
+  return result.response.text();
+};
+
+// -----------------------------------------------
+// 7. EDIT IMAGE
+// -----------------------------------------------
 export const editImageWithGemini = async (
-  base64Image: string,
+  base64: string,
   prompt: string
 ): Promise<string | null> => {
+
   try {
     const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const clean = base64Image.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
+    const clean = base64.replace(/^data:image\/(png|jpg|jpeg);base64,/, "");
 
     const result = await model.generateContent({
       contents: [
@@ -196,44 +201,33 @@ export const editImageWithGemini = async (
     }
 
     return null;
-  } catch (e) {
-    console.log("Erro edição imagem:", e);
+  } catch {
     return null;
   }
 };
 
-// =========================================================
-// 7. AUDITORIA
-// =========================================================
-export const auditSiteContent = async (): Promise<AuditScore> => ({
-  seo: 90,
-  ux: 91,
-  copy: 88,
-  details: ["Bom contraste", "Layout organizado", "Adicionar mais provas sociais"]
-});
-
-// =========================================================
-// 8. SUGERIR PREÇO
-// =========================================================
+// -----------------------------------------------
+// 8. SUGGEST PRICING
+// -----------------------------------------------
 export const suggestPricing = async (
   product: string,
   description: string
 ): Promise<string> => {
+
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const r = await model.generateContent(`
-    Sugira preço para:
-    ${product}
+  const res = await model.generateContent(`
+    Sugira preço para: ${product}
     ${description}
     Apenas formato: "R$ X - R$ Y"
   `);
 
-  return r.response.text();
+  return res.response.text();
 };
 
-// =========================================================
-// 9. MELHORIAS DE SEÇÕES
-// =========================================================
+// -----------------------------------------------
+// 9. DEMO IMPROVEMENTS
+// -----------------------------------------------
 export const suggestDemoImprovements = async (
   arr: any[]
 ): Promise<string[]> => {
@@ -249,8 +243,6 @@ export const suggestDemoImprovements = async (
 
     return JSON.parse(r.response.text());
   } catch {
-    return ["Adicionar FAQ", "Adicionar depoimentos", "Criar seção de urgência"];
+    return ["Adicionar FAQ", "Mais provas sociais", "Adicionar CTA fixo"];
   }
 };
-
-// ===============================
